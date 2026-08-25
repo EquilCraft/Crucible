@@ -2,6 +2,7 @@ package io.github.cruciblemc.forgegradle.tasks.dev;
 
 import com.google.common.io.Files;
 import io.github.cruciblemc.forgegradle.reobf.JarRemapperWrapper;
+import io.github.cruciblemc.forgegradle.reobf.ModernReobfExceptor;
 import net.md_5.specialsource.Jar;
 import net.md_5.specialsource.JarMapping;
 import net.md_5.specialsource.JarRemapper;
@@ -9,7 +10,6 @@ import net.md_5.specialsource.provider.ClassLoaderProvider;
 import net.md_5.specialsource.provider.JarProvider;
 import net.md_5.specialsource.provider.JointProvider;
 import net.minecraftforge.gradle.delayed.DelayedFile;
-import net.minecraftforge.gradle.extrastuff.ReobfExceptor;
 import org.gradle.api.Action;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Project;
@@ -68,7 +68,7 @@ public class ObfuscateTask extends DefaultTask {
     File srg = getSrg();
 
     if (getExc() != null) {
-      ReobfExceptor exceptor = new ReobfExceptor();
+      ModernReobfExceptor exceptor = new ModernReobfExceptor();
       exceptor.toReobfJar = inJar;
       exceptor.deobfJar = getPreFFJar();
       exceptor.excConfig = getExc();

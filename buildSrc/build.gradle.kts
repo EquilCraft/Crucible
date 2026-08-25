@@ -25,6 +25,7 @@ dependencies {
     implementation("net.sf.trove4j:trove4j:2.1.0")
     implementation("com.github.jponge:lzma-java:1.3")
     implementation("com.nothome:javaxdelta:2.0.1")
+    implementation("org.apache.commons:commons-compress:1.27.1")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("com.anatawa12.forge:SpecialSource:1.11.1")
     implementation("org.apache.httpcomponents:httpclient:4.5.14")

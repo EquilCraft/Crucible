@@ -15,7 +15,7 @@ import net.minecraftforge.gradle.tasks.ProcessJarTask;
 import net.minecraftforge.gradle.tasks.ProcessSrcJarTask;
 import net.minecraftforge.gradle.tasks.RemapSourcesTask;
 import net.minecraftforge.gradle.tasks.abstractutil.ExtractTask;
-import net.minecraftforge.gradle.tasks.dev.GenBinaryPatches;
+import io.github.cruciblemc.forgegradle.tasks.dev.ModernGenBinaryPatches;
 import net.minecraftforge.gradle.tasks.dev.GeneratePatches;
 import org.gradle.api.DefaultTask;
 import org.gradle.api.Task;
@@ -360,7 +360,7 @@ public class CrucibleDevPlugin extends DevBasePlugin {
       obf.dependsOn("genSrgs", ECLIPSE_CAULDRON_PROJECT + ":jar");
     }
 
-    GenBinaryPatches task3 = makeTask("genBinPatches", GenBinaryPatches.class);
+    ModernGenBinaryPatches task3 = makeTask("genBinPatches", ModernGenBinaryPatches.class);
     {
       task3.setCleanClient(delayedFile(Constants.JAR_CLIENT_FRESH));
       task3.setCleanServer(delayedFile(Constants.JAR_SERVER_FRESH));

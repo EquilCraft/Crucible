@@ -1,0 +1,32 @@
+--- ../src-base/minecraft/cpw/mods/fml/common/patcher/ClassPatchManager.java
++++ ../src-work/minecraft/cpw/mods/fml/common/patcher/ClassPatchManager.java
+@@ -11,7 +11,6 @@
+ import java.util.jar.JarEntry;
+ import java.util.jar.JarInputStream;
+ import java.util.jar.JarOutputStream;
+-import java.util.jar.Pack200;
+ import java.util.regex.Pattern;
+ 
+ import org.apache.logging.log4j.Level;
+@@ -155,11 +154,21 @@
+                 FMLRelaunchLog.log(Level.ERROR, "The binary patch set is missing. Either you are in a development environment, or things are not going to work!");
+                 return;
+             }
++            /*
+             LzmaInputStream binpatchesDecompressed = new LzmaInputStream(binpatchesCompressed);
+             ByteArrayOutputStream jarBytes = new ByteArrayOutputStream();
+             JarOutputStream jos = new JarOutputStream(jarBytes);
+             Pack200.newUnpacker().unpack(binpatchesDecompressed, jos);
+             jis = new JarInputStream(new ByteArrayInputStream(jarBytes.toByteArray()));
++            */
++            try (
++                LzmaInputStream binpatchesDecompressed = new LzmaInputStream(binpatchesCompressed);
++                ByteArrayOutputStream jarBytes = new ByteArrayOutputStream();
++                JarOutputStream jos = new JarOutputStream(jarBytes)
++            ) {
++                new org.apache.commons.compress.harmony.unpack200.Archive(binpatchesDecompressed, jos).unpack();
++                jis = new JarInputStream(new ByteArrayInputStream(jarBytes.toByteArray()));
++            }
+         }
+         catch (Exception e)
+         {

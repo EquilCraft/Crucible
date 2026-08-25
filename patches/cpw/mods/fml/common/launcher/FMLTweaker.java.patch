@@ -1,13 +1,26 @@
 --- ../src-base/minecraft/cpw/mods/fml/common/launcher/FMLTweaker.java
 +++ ../src-work/minecraft/cpw/mods/fml/common/launcher/FMLTweaker.java
-@@ -32,7 +32,9 @@
+@@ -19,6 +19,7 @@
+ import com.google.common.collect.Maps;
+ 
+ import cpw.mods.fml.relauncher.FMLLaunchHandler;
++// import cpw.mods.fml.relauncher.FMLSecurityManager;
+ 
+ public class FMLTweaker implements ITweaker {
+     private File gameDir;
+@@ -29,6 +30,7 @@
+     public FMLTweaker()
+     {
          System.setProperty("java.net.preferIPv4Stack", "true"); //Lets do this as early as possible. Vanilla does it in Main.main
++        /*
          try
          {
--            System.setSecurityManager(new FMLSecurityManager());
-+        	FMLSecurityManager sm = new FMLSecurityManager();
-+        	sm.defman = System.getSecurityManager();
-+            System.setSecurityManager(sm);
-         }
-         catch (SecurityException se)
+             System.setSecurityManager(new FMLSecurityManager());
+@@ -37,6 +39,7 @@
          {
+             throw new RuntimeException("FML was unable to install the security manager. The game will not start", se);
+         }
++        */
+     }
+     @SuppressWarnings("unchecked")
+     @Override
