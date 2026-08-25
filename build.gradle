@@ -196,21 +196,6 @@ tasks.register('packageLibraries', Zip) {
     description("Package all necessary libraries to run Crucible, in case the server is unable to download them at runtime")
 }
 
-publishing {
-    publications {
-        crucible(MavenPublication) {
-            artifact packageApi
-            artifact packageJavadoc
-        }
-    }
-    repositories {
-        maven {
-            url = buildDir.absolutePath + "/repo"
-            name = "filesystem"
-        }
-    }
-}
-
 // TODO: This is absolute awful
 //  Move this to the gradle plugin?
 var actualProject = project

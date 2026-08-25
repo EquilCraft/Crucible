@@ -20,15 +20,15 @@ public class TerminalConsoleWriterThread implements Runnable {
         this.output = output;
         this.reader = reader;
         // Crucible start - drain the logger since it will have duplicated content
-        try {
-            Field queues = QueueLogAppender.class.getDeclaredField("QUEUES");
-            queues.setAccessible(true);
-            @SuppressWarnings("unchecked")
-            Map<String, BlockingQueue<String>> instance = (Map<String, BlockingQueue<String>>) queues.get(null);
-            instance.get("TerminalConsole").clear();
-        } catch (ReflectiveOperationException e) {
-            e.printStackTrace();
-        }
+//        try {
+//            Field queues = QueueLogAppender.class.getDeclaredField("QUEUES");
+//            queues.setAccessible(true);
+//            @SuppressWarnings("unchecked")
+//            Map<String, BlockingQueue<String>> instance = (Map<String, BlockingQueue<String>>) queues.get(null);
+//            instance.get("TerminalConsole").clear();
+//        } catch (ReflectiveOperationException e) {
+//            e.printStackTrace();
+//        }
         // Crucible end
     }
 
