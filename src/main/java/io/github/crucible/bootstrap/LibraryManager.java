@@ -22,11 +22,26 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class LibraryManager {
+
+    /** Where {@code group:artifact:version} sits under a library root, and under a maven repo. */
+    public static Path resolveJar(Path libraryRoot, String library) {
+        return libraryRoot.resolve(relativeJarPath(library)).normalize().toAbsolutePath();
+    }
+
+    private static String relativeJarPath(String library) {
+        String[] identifiers = library.split(":");
+        if (identifiers.length != 3) {
+            throw new IllegalArgumentException("Invalid identifier " + library);
+        }
+        return String.format("./%1$s/%2$s/%3$s/%2$s-%3$s.jar", identifiers[0].replace('.', '/'),
+                identifiers[1], identifiers[2]);
+    }
 
     public static void downloadMavenLibraries(Path baseDir, String[] repos, String... libraries) throws InterruptedException {
         if (repos.length == 0) {
@@ -38,7 +53,7 @@ public class LibraryManager {
             reposUri[i] = URI.create(repos[i]);
         }
 
-        ForkJoinPool pool = new ForkJoinPool((Runtime.getRuntime().availableProcessors() * 2) + 1);
+        ExecutorService pool = Executors.newFixedThreadPool(Math.min(libraries.length, 16));
         List<DownloadTask<Boolean>> tasks = new ArrayList<>(libraries.length);
         for (String library : libraries) {
             tasks.add(makeMavenDownloadTask(baseDir, reposUri, library));
@@ -59,19 +74,16 @@ public class LibraryManager {
             }
         }
 
+        pool.shutdown();
+
         if (failed) {
             throw new RuntimeException("Failed to download one or more essential files for the server, check your logs for more information");
         }
     }
 
     private static DownloadTask<Boolean> makeMavenDownloadTask(Path baseDir, URI[] repos, String library) {
-        String[] identifiers = library.split(":");
-        if (identifiers.length != 3) {
-            throw new IllegalArgumentException("Invalid identifier " + library);
-        }
         return new DownloadTask<Boolean>() {
-            final String jarRelativeName = String.format("./%1$s/%2$s/%3$s/%2$s-%3$s.jar", identifiers[0].replace('.', '/'),
-                    identifiers[1], identifiers[2]);
+            final String jarRelativeName = relativeJarPath(library);
             final Path jarFile = baseDir.resolve(jarRelativeName).normalize().toAbsolutePath();
             final Path checksumFie = baseDir.resolve(jarRelativeName + ".md5").normalize().toAbsolutePath();
             boolean complete;
@@ -126,6 +138,8 @@ public class LibraryManager {
                         URI uriPath = repo.resolve(jarRelativeName).normalize();
                         file = uriPath.toURL();
                         HttpURLConnection connection = (HttpURLConnection) file.openConnection();
+                        connection.setConnectTimeout(10000);
+                        connection.setReadTimeout(10000);
                         connection.setRequestMethod("GET");
                         connection.connect();
                         if (connection.getResponseCode() >= 200 || connection.getResponseCode() <= 399) {
@@ -161,12 +175,7 @@ public class LibraryManager {
 
     public static boolean checkIntegrity(Path libraryRoot, String[] neededLibraries) throws IOException, NoSuchAlgorithmException {
         for (String neededLibrary : neededLibraries) {
-            String[] identifiers = neededLibrary.split(":");
-            if (identifiers.length != 3) {
-                throw new IllegalArgumentException("Invalid identifier " + neededLibrary);
-            }
-            final String jarRelativeName = String.format("./%1$s/%2$s/%3$s/%2$s-%3$s.jar", identifiers[0].replace('.', '/'),
-                    identifiers[1], identifiers[2]);
+            final String jarRelativeName = relativeJarPath(neededLibrary);
             final Path jarFile = libraryRoot.resolve(jarRelativeName).normalize().toAbsolutePath();
             final Path checksumFie = libraryRoot.resolve(jarRelativeName + ".md5").normalize().toAbsolutePath();
             if (Files.isRegularFile(jarFile) && Files.isRegularFile(checksumFie)) {
