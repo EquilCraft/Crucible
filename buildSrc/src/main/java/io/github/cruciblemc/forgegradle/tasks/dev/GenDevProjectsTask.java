@@ -27,6 +27,11 @@ public class GenDevProjectsTask extends DefaultTask {
           apply plugin: 'java-library'
           apply plugin: 'eclipse'
                   
+          java {
+            sourceCompatibility = JavaVersion.VERSION_1_8
+            targetCompatibility = JavaVersion.VERSION_1_8
+          }
+                      
           repositories {
             mavenCentral()
           %s

@@ -110,6 +110,7 @@ dependencies {
     "libraries"("org.ow2.asm:asm-util:9.9.1")
     "libraries"("org.ow2.asm:asm-deprecated:7.1")
     "libraries"("jakarta.xml.bind:jakarta.xml.bind-api:3.0.1")
+    "libraries"("javax.xml.bind:jaxb-api:2.3.1") // compatibility for legacy 1.7.10 mods on Java 11+
     "libraries"("javax.servlet:javax.servlet-api:4.0.1")
     "libraries"("com.sun.xml.bind:jaxb-impl:3.0.2")
     "libraries"("org.openjdk.nashorn:nashorn-core:15.4")
@@ -141,7 +142,7 @@ dependencies {
     "libraries"("org.avaje:ebean:2.7.3")
     "libraries"("jline:jline:2.6")
     "libraries"("net.md-5:SpecialSource:1.10.0")
-    "libraries"("net.sourceforge.argo:argo:2.25")
+    "libraries"("net.sourceforge.argo:argo:2.25@jar")
     "libraries"("com.googlecode.json-simple:json-simple:1.1")
     "libraries"("org.xerial:sqlite-jdbc:3.7.2")
     "libraries"("mysql:mysql-connector-java:5.1.14")

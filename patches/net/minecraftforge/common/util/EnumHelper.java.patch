@@ -1,0 +1,119 @@
+--- ../src-base/minecraft/net/minecraftforge/common/util/EnumHelper.java
++++ ../src-work/minecraft/net/minecraftforge/common/util/EnumHelper.java
+@@ -24,12 +24,15 @@
+ 
+ public class EnumHelper
+ {
++    /*
+     private static Object reflectionFactory      = null;
+     private static Method newConstructorAccessor = null;
+     private static Method newInstance            = null;
+     private static Method newFieldAccessor       = null;
+     private static Method fieldAccessorSet       = null;
++     */
+     private static boolean isSetup               = false;
++    private static final sun.misc.Unsafe UNSAFE = findUnsafe();
+ 
+     //Some enums are decompiled with extra arguments, so lets check for that
+     @SuppressWarnings("rawtypes")
+@@ -116,6 +119,7 @@
+             return;
+         }
+ 
++        /*
+         try
+         {
+             Method getReflectionFactory = Class.forName("sun.reflect.ReflectionFactory").getDeclaredMethod("getReflectionFactory");
+@@ -129,22 +133,40 @@
+         {
+             e.printStackTrace();
+         }
++         */
+ 
+         isSetup = true;
+     }
+ 
++    private static sun.misc.Unsafe findUnsafe()
++    {
++        try
++        {
++            Field field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
++            field.setAccessible(true);
++            return (sun.misc.Unsafe)field.get(null);
++        }
++        catch (Exception e)
++        {
++            throw new RuntimeException("Unable to obtain Unsafe", e);
++        }
++    }
++
+     /*
+      * Everything below this is found at the site below, and updated to be able to compile in Eclipse/Java 1.6+
+      * Also modified for use in decompiled code.
+      * Found at: http://niceideas.ch/roller2/badtrash/entry/java_create_enum_instances_dynamically
+      */
+-    private static Object getConstructorAccessor(Class<?> enumClass, Class<?>[] additionalParameterTypes) throws Exception
++    private static java.lang.invoke.MethodHandle getConstructorAccessor(Class<?> enumClass, Class<?>[] additionalParameterTypes) throws Exception
+     {
+         Class<?>[] parameterTypes = new Class[additionalParameterTypes.length + 2];
+         parameterTypes[0] = String.class;
+         parameterTypes[1] = int.class;
+         System.arraycopy(additionalParameterTypes, 0, parameterTypes, 2, additionalParameterTypes.length);
+-        return newConstructorAccessor.invoke(reflectionFactory, enumClass.getDeclaredConstructor(parameterTypes));
++        Constructor<?> constructor = enumClass.getDeclaredConstructor(parameterTypes);
++        constructor.setAccessible(true);
++
++        return java.lang.invoke.MethodHandles.lookup().unreflectConstructor(constructor);
+     }
+ 
+     private static < T extends Enum<? >> T makeEnum(Class<T> enumClass, String value, int ordinal, Class<?>[] additionalTypes, Object[] additionalValues) throws Exception
+@@ -153,17 +175,40 @@
+         parms[0] = value;
+         parms[1] = Integer.valueOf(ordinal);
+         System.arraycopy(additionalValues, 0, parms, 2, additionalValues.length);
+-        return enumClass.cast(newInstance.invoke(getConstructorAccessor(enumClass, additionalTypes), new Object[] {parms}));
++        try {
++            return enumClass.cast(getConstructorAccessor(enumClass, additionalTypes).invokeWithArguments(parms));
++        } catch (Throwable t) {
++            if (t instanceof Exception) {
++                throw (Exception)t;
++            }
++            if (t instanceof Error) {
++                throw (Error)t;
++            }
++            throw new RuntimeException(t);
++        }
+     }
+ 
+     public static void setFailsafeFieldValue(Field field, Object target, Object value) throws Exception
+     {
++        /*
+         field.setAccessible(true);
+         Field modifiersField = Field.class.getDeclaredField("modifiers");
+         modifiersField.setAccessible(true);
+         modifiersField.setInt(field, field.getModifiers() & ~Modifier.FINAL);
+         Object fieldAccessor = newFieldAccessor.invoke(reflectionFactory, field, false);
+         fieldAccessorSet.invoke(fieldAccessor, target, value);
++         */
++        if (Modifier.isStatic(field.getModifiers()))
++        {
++            Object base = UNSAFE.staticFieldBase(field);
++            long offset = UNSAFE.staticFieldOffset(field);
++            UNSAFE.putObject(base, offset, value);
++        }
++        else
++        {
++            long offset = UNSAFE.objectFieldOffset(field);
++            UNSAFE.putObject(target, offset, value);
++        }
+     }
+ 
+     private static void blankField(Class<?> enumClass, String fieldName) throws Exception
+@@ -172,7 +217,6 @@
+         {
+             if (field.getName().contains(fieldName))
+             {
+-                field.setAccessible(true);
+                 setFailsafeFieldValue(field, enumClass, null);
+                 break;
+             }

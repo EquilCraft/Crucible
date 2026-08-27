@@ -1,0 +1,65 @@
+--- ../src-base/minecraft/cpw/mods/fml/common/registry/ObjectHolderRef.java
++++ ../src-work/minecraft/cpw/mods/fml/common/registry/ObjectHolderRef.java
+@@ -66,14 +66,19 @@
+         makeWritable(field);
+     }
+ 
++    /*
+     private static Field modifiersField;
+     private static Object reflectionFactory;
+     private static Method newFieldAccessor;
+     private static Method fieldAccessorSet;
+-    private static void makeWritable(Field f)
++    */
++    private static final sun.misc.Unsafe UNSAFE = findUnsafe();
++
++    private static sun.misc.Unsafe findUnsafe()
+     {
+         try
+         {
++            /*
+             if (modifiersField == null)
+             {
+                 Method getReflectionFactory = Class.forName("sun.reflect.ReflectionFactory").getDeclaredMethod("getReflectionFactory");
+@@ -84,12 +89,27 @@
+                 modifiersField.setAccessible(true);
+             }
+             modifiersField.setInt(f, f.getModifiers() & ~Modifier.FINAL);
++             */
++            Field field = sun.misc.Unsafe.class.getDeclaredField("theUnsafe");
++            field.setAccessible(true);
++            return (sun.misc.Unsafe) field.get(null);
+         } catch (Exception e)
+         {
+             throw Throwables.propagate(e);
+         }
+     }
+ 
++    private static void makeWritable(Field f)
++    {
++        /*
++         * No-op.
++         *
++         * Modern JVMs don't expose Field.modifiers and don't provide the old
++         * ReflectionFactory FieldAccessor API. apply() writes the field
++         * directly through Unsafe instead.
++         */
++    }
++
+     public boolean isValid()
+     {
+         return isBlock || isItem;
+@@ -121,8 +141,13 @@
+         }
+         try
+         {
++            /*
+             Object fieldAccessor = newFieldAccessor.invoke(reflectionFactory, field, false);
+             fieldAccessorSet.invoke(fieldAccessor, null, thing);
++             */
++            Object base = UNSAFE.staticFieldBase(field);
++            long offset = UNSAFE.staticFieldOffset(field);
++            UNSAFE.putObject(base, offset, thing);
+         }
+         catch (Exception e)
+         {

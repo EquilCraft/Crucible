@@ -13,6 +13,7 @@ import net.minecraftforge.gradle.delayed.DelayedFileTree;
 import org.apache.commons.compress.harmony.pack200.Archive;
 import org.apache.commons.compress.harmony.pack200.PackingOptions;
 import org.gradle.api.DefaultTask;
+import org.gradle.api.GradleException;
 import org.gradle.api.tasks.InputFile;
 import org.gradle.api.tasks.OutputFile;
 import org.gradle.api.tasks.TaskAction;
@@ -66,10 +67,20 @@ public class ModernGenBinaryPatches extends DefaultTask {
             for (File patch : tree.call().getFiles()) {
                 String name = patch.getName().replace(".java.patch", "");
                 String obfName = srgMapping.get(name);
+
+                if (obfName == null) {
+                    getLogger().warn(
+                    "No SRG mapping found for patch class '{}' ({})",
+                    name, patch.getPath());
+                    continue;
+                }
+
                 patchedFiles.add(obfName);
                 addInnerClasses(name, patchedFiles);
             }
         }
+
+        getLogger().lifecycle("Selected {} Minecraft classes for binary patching", patchedFiles.size());
 
         HashMap<String, byte[]> runtime = new HashMap<>();
         HashMap<String, byte[]> devtime = new HashMap<>();
@@ -78,13 +89,36 @@ public class ModernGenBinaryPatches extends DefaultTask {
         createBinPatches(runtime, "server/", getCleanServer(), getDirtyJar());
         createBinPatches(devtime, "merged/", getCleanMerged(), getDirtyJar());
 
+        getLogger().lifecycle("Runtime binpatch entries: {}", runtime.size());
+        getLogger().lifecycle("Devtime binpatch entries: {}", devtime.size());
+
+        /*
++         * GTNHLib expects Forge's BlockFlowerPot#getDrops patch to exist.
++         * Failing here gives us a useful build error instead of generating a
++         * server that crashes much later during Mixin application.
++         */
+        verifyCriticalRuntimePatch(runtime, "BlockFlowerPot");
+
         byte[] runtimedata = createPatchJar(runtime);
-        runtimedata = pack200(runtimedata);
+        getLogger().lifecycle(
+        "Runtime patch JAR before LZMA: {} bytes",
+        runtimedata.length);
+
         runtimedata = compress(runtimedata);
 
+        getLogger().lifecycle(
+        "Runtime patch payload after LZMA: {} bytes",
+        runtimedata.length);
+
         byte[] devtimedata = createPatchJar(devtime);
-        devtimedata = pack200(devtimedata);
+        getLogger().lifecycle(
+        "Devtime patch JAR before LZMA: {} bytes",
+        devtimedata.length);
+
         devtimedata = compress(devtimedata);
+        getLogger().lifecycle(
+        "Devtime patch payload after LZMA: {} bytes",
+        devtimedata.length);
 
         buildOutput(runtimedata, devtimedata);
     }
@@ -92,7 +126,12 @@ public class ModernGenBinaryPatches extends DefaultTask {
     private void addInnerClasses(String parent, Set<String> patchList) {
         // Recursively add inner classes to the list of patches - this will mean we ship anything affected by "access$" changes
         for (String inner : innerClasses.get(parent)) {
-            patchList.add(srgMapping.get(inner));
+            String obfName = srgMapping.get(inner);
+            if (obfName != null) {
+                patchList.add(obfName);
+            } else {
+                getLogger().warn("No SRG mapping found for inner class '{}'", inner);
+            }
             addInnerClasses(inner, patchList);
         }
     }
@@ -117,23 +156,30 @@ public class ModernGenBinaryPatches extends DefaultTask {
     }
 
     private void createBinPatches(HashMap<String, byte[]> patches, String root, File base, File target) throws Exception {
-        JarFile cleanJ = new JarFile(base);
-        JarFile dirtyJ = new JarFile(target);
+        int generated = 0;
+        int missingDirty = 0;
 
-        for (Map.Entry<String, String> entry : obfMapping.entrySet()) {
-            String obf = entry.getKey();
-            String srg = entry.getValue();
+        try (JarFile cleanJ = new JarFile(base);
+            JarFile dirtyJ = new JarFile(target)) {
 
-            if (!patchedFiles.contains(obf)) // Not in the list of patch files.. we didn't edit it.
-            {
-                continue;
-            }
+            for (Map.Entry<String, String> entry : obfMapping.entrySet()) {
+                String obf = entry.getKey();
+                String srg = entry.getValue();
 
-            JarEntry cleanE = cleanJ.getJarEntry(obf + ".class");
-            JarEntry dirtyE = dirtyJ.getJarEntry(obf + ".class");
+                if (!patchedFiles.contains(obf)) // Not in the list of patch files.. we didn't edit it.
+                {
+                    continue;
+                }
 
-            if (dirtyE == null) //Something odd happened.. a base MC class wasn't in the obfed jar?
-            {
+                JarEntry cleanE = cleanJ.getJarEntry(obf + ".class");
+                JarEntry dirtyE = dirtyJ.getJarEntry(obf + ".class");
+
+                if (dirtyE == null) //Something odd happened.. a base MC class wasn't in the obfed jar?
+                {
+                    missingDirty++;
+                    getLogger().warn(
+                        "{}: patched class missing from dirty/reobfuscated JAR: {} -> {}",
+                        root, obf, srg);
                 continue;
             }
 
@@ -154,10 +200,40 @@ public class ModernGenBinaryPatches extends DefaultTask {
             out.write(diff);           // Patch
 
             patches.put(root + srg.replace('/', '.') + ".binpatch", out.toByteArray());
+            generated++;
+        }
         }
 
-        cleanJ.close();
-        dirtyJ.close();
+        getLogger().lifecycle(
+            "{} generated {} binpatches; {} patched classes were missing from dirty JAR",
+            root, generated, missingDirty);
+    }
+
+    private void verifyCriticalRuntimePatch(Map<String, byte[]> runtime, String simpleSrgName) {
+    String obfName = srgMapping.get(simpleSrgName);
+    if (obfName == null) {
+    throw new GradleException(
+    "Cannot resolve SRG mapping for critical class " + simpleSrgName);
+    }
+
+    String srgName = obfMapping.get(obfName);
+    if (srgName == null) {
+    throw new GradleException(
+    "Cannot resolve full SRG name for critical class "
+    + simpleSrgName + " (" + obfName + ")");
+    }
+
+    String serverKey =
+    "server/" + srgName.replace('/', '.') + ".binpatch";
+
+    if (!runtime.containsKey(serverKey)) {
+    throw new GradleException(
+    "Critical runtime binpatch is missing: " + serverKey
+    + ". Refusing to produce a broken server JAR.");
+    }
+
+    getLogger().lifecycle(
+    "Verified critical runtime binpatch: {}", serverKey);
     }
 
     private int adlerHash(byte[] input) {
