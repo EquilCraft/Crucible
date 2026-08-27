@@ -1,8 +1,10 @@
 --- ../src-base/minecraft/net/minecraft/command/ServerCommandManager.java
 +++ ../src-work/minecraft/net/minecraft/command/ServerCommandManager.java
-@@ -39,8 +39,16 @@
+@@ -38,9 +38,24 @@
+ public class ServerCommandManager extends CommandHandler implements IAdminCommand
  {
      private static final String __OBFID = "CL_00000922";
++    private boolean vanillaCommandsRegistered;
  
 +    // Cauldron start - moved commands to it's own method to be executed further in server startup + changed to registerVanillaCommand
      public ServerCommandManager()
@@ -12,12 +14,18 @@
 +
 +    public void registerVanillaCommands()
 +    {
++        if (this.vanillaCommandsRegistered)
++        {
++            return;
++        }
++
++        this.vanillaCommandsRegistered = true;
 +        // Cauldron - do not register vanilla commands replaced by Bukkit
 +        /*    
          this.registerCommand(new CommandTime());
          this.registerCommand(new CommandGameMode());
          this.registerCommand(new CommandDifficulty());
-@@ -56,7 +64,6 @@
+@@ -56,7 +71,6 @@
          this.registerCommand(new CommandEmote());
          this.registerCommand(new CommandShowSeed());
          this.registerCommand(new CommandHelp());
@@ -25,7 +33,7 @@
          this.registerCommand(new CommandMessage());
          this.registerCommand(new CommandBroadcast());
          this.registerCommand(new CommandSetSpawnpoint());
-@@ -64,17 +71,23 @@
+@@ -64,17 +78,23 @@
          this.registerCommand(new CommandGameRule());
          this.registerCommand(new CommandClearInventory());
          this.registerCommand(new CommandTestFor());
@@ -57,7 +65,7 @@
              this.registerCommand(new CommandOp());
              this.registerCommand(new CommandDeOp());
              this.registerCommand(new CommandStop());
-@@ -90,7 +103,7 @@
+@@ -90,7 +110,7 @@
              this.registerCommand(new CommandListPlayers());
              this.registerCommand(new CommandWhitelist());
              this.registerCommand(new CommandSetPlayerTimeout());
@@ -66,7 +74,7 @@
          }
          else
          {
-@@ -98,6 +111,7 @@
+@@ -98,6 +118,7 @@
          }
  
          CommandBase.setAdminCommander(this);

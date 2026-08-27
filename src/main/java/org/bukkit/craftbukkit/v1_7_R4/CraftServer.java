@@ -110,6 +110,7 @@ public final class CraftServer implements Server {
     private final String serverName = "Cauldron"; // Cauldron - temporarily keep MCPC-Plus name until plugins adapt
     private final String serverVersion;
     private final String bukkitVersion = Versioning.getBukkitVersion();
+    private boolean postWorldPluginsEnabled;
     private final Logger logger = Logger.getLogger("Minecraft");
     private final ServicesManager servicesManager = new SimpleServicesManager();
     private final CraftScheduler scheduler = new CraftScheduler();
@@ -326,6 +327,10 @@ public final class CraftServer implements Server {
     }
 
     public void enablePlugins(PluginLoadOrder type) {
+        if (type == PluginLoadOrder.POSTWORLD && postWorldPluginsEnabled) {
+            return;
+        }
+
         // Cauldron start - initialize mod wrappers
         CraftBlock.initMappings();
         CraftEntity.initMappings();
@@ -344,6 +349,7 @@ public final class CraftServer implements Server {
         }
 
         if (type == PluginLoadOrder.POSTWORLD) {
+            postWorldPluginsEnabled = true;
             commandMap.setFallbackCommands();
             setVanillaCommands();
             commandMap.registerServerAliases();
